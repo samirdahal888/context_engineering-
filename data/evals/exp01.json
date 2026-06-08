@@ -1,0 +1,38 @@
+[
+  {
+    "id": "q1",
+    "question": "What do attention scores sum to, and why?",
+    "expected_facts": ["1.0", "softmax"],
+    "source_paper": "1706.03762"
+  },
+  {
+    "id": "q2",
+    "question": "What is the U-shaped performance curve when models use long contexts?",
+    "expected_facts": ["lost in the middle", "beginning", "end"],
+    "source_paper": "2307.03172"
+  },
+  {
+    "id": "q3",
+    "question": "What is indirect prompt injection?",
+    "expected_facts": ["malicious instructions", "retrieved", "external"],
+    "source_paper": "2302.12173"
+  },
+  {
+    "id": "q4",
+    "question": "What is the difference between factuality and faithfulness errors?",
+    "expected_facts": ["real world", "provided context"],
+    "source_paper": "2311.05232"
+  },
+  {
+    "id": "q5",
+    "question": "How does RLHF affect output diversity?",
+    "expected_facts": ["reduces", "diversity"],
+    "source_paper": "2310.06452"
+  },
+  {
+    "id": "q6",
+    "question": "What does RULER measure?",
+    "expected_facts": ["context length", "long-context", "real"],
+    "source_paper": "2404.06654"
+  }
+]

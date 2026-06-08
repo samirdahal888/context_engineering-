@@ -1,0 +1,27 @@
+# --- Agent framework ---
+strands-agents
+strands-agents-tools
+
+# --- UI ---
+streamlit
+
+# --- Notebooks ---
+jupyter
+ipykernel
+nbformat
+
+# --- AWS / model access ---
+boto3
+
+# --- Config & data models ---
+python-dotenv
+pydantic
+pydantic-settings
+
+# --- Corpus ingest ---
+arxiv
+pymupdf
+
+# --- Data / tables / plots ---
+pandas
+matplotlib

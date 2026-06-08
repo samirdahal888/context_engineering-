@@ -1,0 +1,44 @@
+[
+  {
+    "id": "1706.03762",
+    "title": "Attention Is All You Need",
+    "desc": "transformer architecture; self-attention; attention scores sum to 1.0",
+    "path": "data/corpus/1706.03762.txt"
+  },
+  {
+    "id": "2307.03172",
+    "title": "Lost in the Middle",
+    "desc": "how LLMs use long contexts; U-shaped position performance curve",
+    "path": "data/corpus/2307.03172.txt"
+  },
+  {
+    "id": "2404.06654",
+    "title": "RULER",
+    "desc": "measuring the real effective context length of long-context models",
+    "path": "data/corpus/2404.06654.txt"
+  },
+  {
+    "id": "2005.11401",
+    "title": "Retrieval-Augmented Generation",
+    "desc": "RAG for knowledge-intensive NLP tasks",
+    "path": "data/corpus/2005.11401.txt"
+  },
+  {
+    "id": "2311.05232",
+    "title": "A Survey on Hallucination in LLMs",
+    "desc": "taxonomy of hallucination including factuality vs faithfulness",
+    "path": "data/corpus/2311.05232.txt"
+  },
+  {
+    "id": "2302.12173",
+    "title": "Indirect Prompt Injection",
+    "desc": "compromising LLM apps via malicious instructions in retrieved data",
+    "path": "data/corpus/2302.12173.txt"
+  },
+  {
+    "id": "2310.06452",
+    "title": "RLHF effects on diversity",
+    "desc": "how RLHF reduces output diversity in language models",
+    "path": "data/corpus/2310.06452.txt"
+  }
+]
