@@ -27,15 +27,23 @@ class ContextPolicy(BaseModel):
 
       naive       = keep everything raw, no budget (context grows forever)
       engineered  = truncate each tool output + clear old ones + cap total
+
+    Experiment 3 (Compaction) reuses `max_tokens` as the context-window ceiling
+    and adds two knobs: whether to compact at all, and the fill fraction at
+    which compaction fires.
     """
     # Exp 1 modes still valid; Exp 2 adds naive/engineered. Kept permissive so
-    # both experiments share one policy type.
+    # all experiments share one policy type.
     mode: Literal["load_everything", "progressive", "naive", "engineered"] = "engineered"
 
     # --- Exp 2 budgeting knobs (engineered arm only) ---
-    max_tokens: int = 8000                       # budget ceiling (engineered only)
+    max_tokens: int = 8000                       # budget / window ceiling (engineered only)
     truncate_tool_output_to: int | None = 1500   # cap per tool output, in tokens
     clear_old_tool_results: bool = True          # replace old raw tool outputs with a stub
+
+    # --- Exp 3 compaction knobs (engineered arm only) ---
+    compaction_enabled: bool = True              # summarize + reset history near the limit
+    compaction_threshold: float = 0.8            # compact when tokens > threshold * max_tokens
 
 
 class ContextTrace(BaseModel):

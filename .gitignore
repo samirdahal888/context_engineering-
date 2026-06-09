@@ -12,3 +12,6 @@ venv/
 
 # OS
 .DS_Store
+
+# Exp 4 external memory (regenerated at runtime)
+data/memory/

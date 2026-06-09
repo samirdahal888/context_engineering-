@@ -15,6 +15,11 @@ experiment shows a context-engineering *problem* (naive arm) and its *fix*
 - **Exp 1 — Progressive Disclosure** (load-everything vs index + `load_document`)
 - **Exp 2 — Context Rot** (truncate + clear tool outputs across an agent loop)
 - **Exp 3 — Compaction** (summarize history at a threshold → the sawtooth)
+- **Exp 4 — External Memory** (note-taking to `data/memory/notes.json` that
+  survives a full session reset; two sessions, naive ≈ 2 papers vs engineered 4)
+- **Exp 5 — Multi-Agent** (3 isolated sub-agents + a composer; parent/composer
+  context ~1k vs single-agent ~80k — compression by architecture, with an honest
+  latency tradeoff: multi is ~2× slower)
 
 ---
 
@@ -37,7 +42,13 @@ experiment shows a context-engineering *problem* (naive arm) and its *fix*
 6. **Real numbers only.** Every token count / latency / cost must come from a
    real API response. Never hardcode or fake. When a value is an estimate
    (e.g., the local tokenizer fallback), label it clearly as approximate.
-7. **verify  the official source firts .** when using the strands and other they are friquently changing so , first  verify form the official docs 
+7. **Verify the official source first.** Strands (and other deps) change
+   frequently — confirm the current API from the official docs before using it.
+   (In this repo, the working `@tool`/`Agent` patterns already in the code count
+   as proof; re-verify externally when adding something new.)
+8. **Follow clean-code principles (Uncle Bob).** Small single-responsibility
+   functions, intention-revealing names, no dead code.
+
 
 
 ---
@@ -51,13 +62,19 @@ pages/N_*.py              ← Streamlit page. Thin shell: collect input, call
                             experiments/, render. NO experiment logic here.
 streamlit_app.py          ← landing page + multipage entry point.
 core/                     ← framework-agnostic shared code (NO strands imports).
-tools/                    ← Strands @tool functions (e.g. load_document).
+tools/                    ← Strands @tool functions (load_document, memory_tools).
+memory/                   ← framework-agnostic file-backed note store (Exp 4).
+                            NO strands imports; the @tools wrap it.
+agents/                   ← Strands sub-agents exposed as tools (Exp 5,
+                            Agents-as-Tools). Builds Agents, so it MAY import strands.
 data/corpus/ + index.json ← the 7 arXiv papers + lightweight index (reused).
+data/memory/notes.json    ← Exp 4 external memory (gitignored; regenerated at run).
 ```
 
 **Reuse, don't rebuild.** New experiments reuse `core/tokenizer.py`,
-`core/settings.py`, `core/context_models.py`, `data/`, `tools/load_document.py`,
-and the agent-loop pattern from earlier experiments.
+`core/settings.py`, `core/context_models.py`, `core/compaction.py`, `data/`,
+`tools/load_document.py`, `memory/store.py`, and the agent + agent-loop patterns
+from earlier experiments.
 
 ---
 
@@ -70,9 +87,13 @@ and the agent-loop pattern from earlier experiments.
 - **Clean code in `experiments/*.py`:** small single-responsibility functions,
   type hints, docstrings, no prints, no pandas/matplotlib. Return plain dicts.
 - **One pipeline, policy-driven.** Naive vs engineered arms differ only by a
-  `ContextPolicy` (in `core/context_models.py`), not by forking into separate
-  code paths. Build a single `_run_loop(..., policy)` and two thin wrappers.
-- **`core/` stays framework-agnostic** — no `strands` imports in `core/`.
+  `ContextPolicy` (in `core/context_models.py`) or by which tools are enabled —
+  not by forking into separate code paths. Build a single `_run_loop(..., policy)`
+  (or `_run_session(...)`) and two thin wrappers.
+- **`core/` and `memory/` stay framework-agnostic** — no `strands` imports.
+  Strands `@tool` wrappers live in `tools/` and call into those pure modules
+  (e.g. `tools/memory_tools.py` → `memory/store.py`). Inject the model call as a
+  callable when a `core/` service needs an LLM (see `core/compaction.py`).
 - **Pages** import from `experiments/` and start with a 3-line shim so they also
   work when run directly:
   ```python
@@ -115,13 +136,44 @@ and the agent-loop pattern from earlier experiments.
 - Use the **Converse API** (`bedrock-runtime.converse`); messages must
   **alternate user/assistant** and start with user. Put task instructions in the
   `system` param when you need consecutive same-role turns.
+- **Haiku tool-use is reliable for *fetching*, flaky for *re-weaving*.** In Exp 4
+  the agent always called `read_progress` and got the notes, but inconsistently
+  folded that recovered tool-result back into a prose answer (coverage swung
+  2–3/4, and a *stricter* prompt made it worse). Fix: ground the final synthesis
+  in the structured artifact — write the brief *directly from* `notes.json`
+  rather than hoping the model re-derives it. The durable note IS the source of
+  truth. Prefer grounding over prompt-nagging when output must be reproducible.
+- **Real per-call token usage lives in Strands' agent metrics**, not just the
+  cumulative total. `result.metrics.accumulated_usage` is the SUM across cycles
+  (overcounts a multi-turn agent). For a real "peak context" use the max single
+  call: `max(c.usage["inputTokens"] for inv in result.metrics.agent_invocations
+  for c in inv.cycles)` (helper: `agents.subagents.peak_input_tokens`).
+- **Agents-as-Tools = an `@tool` that builds an inner `Agent` and returns
+  `str(response)`** (verified at strandsagents.com). Only the returned string
+  enters the caller's context, so a sub-agent's raw work is isolated by
+  construction. Capture sub-agent metrics OUT-OF-BAND (a module list) — never
+  route them through the parent, or you defeat the isolation you're
+  demonstrating. Use `callback_handler=None` to mute sub-agent streaming.
+- **Don't trust Haiku as an autonomous orchestrator.** Giving the parent the
+  three sub-agent tools and telling it to call them, it sometimes answered the
+  multi-part question from its own parametric knowledge and skipped the tools —
+  a *silently invalid* run (empty sub-agent usage, a tiny "parent" context that
+  never delegated). Exp 5 therefore **orchestrates the specialists explicitly**
+  (`run_all_specialists`) and feeds their summaries to a tool-less **composer**.
+  Each specialist still runs in its own window, so isolation holds and the run is
+  reproducible. (And always guard UI code against an empty usage list.)
 
 ---
 
 ## Per-experiment build checklist
 
-1. Extend `core/context_models.py` (`ContextPolicy`) if the experiment needs new knobs.
-2. Build `notebooks/expNN_*.ipynb` (small cells) and **run it** to prove the effect.
+1. Extend `core/context_models.py` (`ContextPolicy`) / `core/settings.py` if the
+   experiment needs new knobs. Add any new framework-agnostic service to `core/`
+   or `memory/`, and its Strands `@tool` wrapper to `tools/`.
+2. Build `notebooks/expNN_*.ipynb` (small cells) and **run it** to prove the
+   effect (`jupyter nbconvert --to notebook --execute --inplace` is a clean way
+   to run + capture real outputs). Gitignore any runtime-generated artifacts.
 3. Extract pure functions to `experiments/expNN.py` (config from `settings`).
 4. Add `pages/N_*.py` (thin shell) and verify with `AppTest`.
-5. Show the acceptance check output at each step.
+5. Show the acceptance check output at each step (run the real code path, not
+   just imports — for agent experiments that means real Bedrock calls).

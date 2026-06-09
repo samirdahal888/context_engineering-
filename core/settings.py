@@ -61,6 +61,18 @@ class Settings(BaseSettings):
     # --- load_document tool: per-document truncation ---
     max_document_words: int = 12_000
 
+    # --- Exp 5 multi-agent: hard cap so each sub-agent returns a concise summary
+    # (~300 words) instead of dumping its raw exploration. ---
+    subagent_summary_tokens: int = 450
+
+    # --- Exp 3 compaction (a small DEMO window so overflow is fast + visible,
+    # NOT a real 200k window). All real token counts still come from the API. ---
+    compaction_window_tokens: int = 6000     # the demo context ceiling
+    compaction_threshold: float = 0.8        # compact at 80% full
+    per_paper_tokens: int = 1200             # how much of each paper we feed per step
+    loop_output_tokens: int = 300            # max output per running-synthesis step
+    summary_output_tokens: int = 500         # max output for the compaction summary
+
     # --- Derived paths (not configurable) ---
     @property
     def root(self) -> Path:
@@ -73,6 +85,15 @@ class Settings(BaseSettings):
     @property
     def index_path(self) -> Path:
         return ROOT / "data" / "index.json"
+
+    @property
+    def memory_dir(self) -> Path:
+        """Exp 4: external memory lives here, OUTSIDE the context window."""
+        return ROOT / "data" / "memory"
+
+    @property
+    def notes_path(self) -> Path:
+        return self.memory_dir / "notes.json"
 
     # --- Derived values ---
     @property
